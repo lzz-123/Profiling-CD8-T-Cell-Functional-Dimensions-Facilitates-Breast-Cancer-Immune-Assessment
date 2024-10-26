@@ -2,9 +2,8 @@
 #TCGA is the dataset containing 
 #subtype: HR+HER2-, HER2+, TNBC
 #stage: I, II, III
-library(randomForestSRC)
-
 #leave one out cross validation
+library(randomForestSRC)
 for (i in 1:nrow(TCGA)){
   train<-TCGA[-i,]
   test<-TCGA[-train,]
