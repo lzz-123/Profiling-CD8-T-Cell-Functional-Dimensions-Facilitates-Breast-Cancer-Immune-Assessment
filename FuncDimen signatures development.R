@@ -19,6 +19,7 @@ for (i in 1:m){
   cor[i,5]<-a$estimate
   p[i,5]<-a$p.value
 }
+
 #FDR
 for (i in 1:5){
   p[,i]<-p.adjust(p[,i],method="fdr")
@@ -29,9 +30,11 @@ for (i in 1:5){
 #Y1 is the abundance of CD8+ T cells exhibiting strong activity in tumor reactivity
 X1<-matrixA
 Y1<-total$reactivity
+
 #lasso
 set.seed(123)
 lamodel <- glmnet(X1, Y1,family="gaussian") 
+
 #cross validation for lasso
 set.seed(123)
 lasso_model <- cv.glmnet(X1,Y1,nfolds =10)
@@ -48,11 +51,15 @@ selection1a1<-selection1a1[-which(selection1a1$s0==0),]
 library(randomForest)
 set.seed(123)
 rf<- randomForest(x=X1,y=Y1,ntree=500,important=TRUE,proximity=TRUE)
+
+#cross validation for randomforest
 set.seed(123)
 cv1<-rfcv(matrixA[,-1], matrixA$reactivity, cv.fold = 10)
 with(cv1, plot(n.var, error.cv, log="x", type="o", lwd=2))
 set.seed(123)
 cv <- replicate(10, rfcv(matrixA[,-1], matrixA$reactivity, cv.fold = 10), simplify = FALSE)
+
+#the model with lowest error rate determined the optimal number of critical genes selected by randomforest
 cvtest <- data.frame(sapply(cv, '[[', 'error.cv'))
 cvtest$otus <- rownames(cvtest)
 cvtest <- reshape2::melt(cvtest, id = 'otus')
@@ -61,21 +68,27 @@ cvmean <- aggregate(cvtest$value, by = list(cvtest$otus), FUN = mean)
 selection1b1<-as.data.frame(rf$importance)
 selection1b1$Gene<-rownames(selection1b1)
 selection1b1<-arrange(selection1b1,IncNodePurity)
-#the optimal number of critical genes selected by randomforest
-selection1b1<-as.data.frame(selection1b1[c(173:309),])
+
+#i is the the optimal number of critical genes selected by randomforest
+selection1b1<-as.data.frame(selection1b1[c(nchar(selection1b1)-i:nchar(selection1b1)),])
 
 #xgboost
 library("xgboost")
 rownames(matrixA)<-matrixA$patient
+
 #remove the column of patients
 matrixA<-matrixA[,-2]
 model_martix_train1 <- model.matrix(reactivity ~ . - 1, matrixA)
 data_train1 <- xgb.DMatrix(model_martix_train1, label = matrixA$reactivity,nthread=2)
 param <-list(max_depth = 6, eta = 0.3,objective = "reg:linear")
+
+#cross validation for xgboost
 set.seed(123)
 cv<-xgb.cv(param,data_train1,nrounds=500,nfold=10)
+
+#the iteration x is determined based on the cross-validation results
 set.seed(123)
-xgb_model1<- xgb.train(param, data_train1, nrounds = x)#the iteration based on the cross-validation results
+xgb_model1<- xgb.train(param, data_train1, nrounds = x)
 xgb1 <- xgb.importance(xgb_model1[["feature_names"]], model = xgb_model1)
 selection1c1<-xgb.importance(xgb_model1[["feature_names"]], model = xgb_model1)
 
