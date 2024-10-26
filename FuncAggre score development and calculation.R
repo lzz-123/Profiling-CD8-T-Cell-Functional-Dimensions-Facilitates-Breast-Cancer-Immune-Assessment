@@ -4,7 +4,7 @@
 #stage: I, II, III
 library(randomForestSRC)
 
-#LOOCV
+#leave one out cross validation
 for (i in 1:nrow(TCGA)){
   train<-TCGA[-i,]
   test<-TCGA[-train,]
